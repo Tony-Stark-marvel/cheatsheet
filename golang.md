@@ -70,7 +70,7 @@ switch i.(type) {
         fmt.Println(arg, "is an unknown type.")
 }
 ```
-与C语言不同，默认情况下就自带了break效果，所以如果需要继续往后传递，使用关键字语法。
+与C语言不同，默认情况下就自带了break效果，所以如果需要继续往后传递，使用关键字语法。fallthrough，他会强制执行后面的 case 语句，并且默认执行下一条 case 的表达式结果为 true的逻辑
 
 ## array数组和slices切片
 ```golang
