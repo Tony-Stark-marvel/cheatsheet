@@ -415,6 +415,17 @@ yes
 for filename in ./*; do echo $filename; done
 ```
 
+* 扩展~符号
+有时候我们获取的字符串带有tilde波浪线需要扩展成完整的路径，可以用eval的方式：
+```
+eval echo '~/.cache'
+```
+
+* 有一个目录下有很多子目录，想要统计每个字目录的文件数，按照个数排序打印，应该怎么写shell？
+```
+find ./ -type f | awk -F/ '{print$(NF-1), NF-1}' | sort | uniq -c | sort -nr -k 1 | awk '{print $1,$2}'
+```
+
 # 常见问题
 
 * -e -f -d的区别是什么？

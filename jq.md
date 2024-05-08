@@ -209,6 +209,167 @@ echo '{"a":[1,2,3,4],"b":[2,4,6,8,10]}' | jq '.a[] as $x | .b[] | select($x == .
 4
 ```
   
+## 如何合并多行的字段？
+```
+echo -n '{"a":1}\n{"b":2}' | jq -s -c 'reduce .[] as $item({}; .+$item)'
+{"a":1,"b":2}
+```
+  
+## 根据某个字段进行聚合
+```
+❯ echo '{"ip":"1.1.1.1","a":1}\n{"ip":"1.1.1.1","b":2}\n{"ip":"2.2.2.2","c":3}' | jq -s 'group_by(.ip)'
+[
+  [
+    {
+      "ip": "1.1.1.1",
+      "a": 1
+    },
+    {
+      "ip": "1.1.1.1",
+      "b": 2
+    }
+  ],
+  [
+    {
+      "ip": "2.2.2.2",
+      "c": 3
+    }
+  ]
+]
+  
+echo '{"ip":"1.1.1.1","a":1}\n{"ip":"1.1.1.1","b":2}\n{"ip":"2.2.2.2","c":3}' | jq -s -c 'group_by(.ip)| map({ ip: (.[0].ip), fields: [.[]|del(.ip)] }) | .[]'
+{"ip":"1.1.1.1","fields":[{"a":1},{"b":2}]}
+{"ip":"2.2.2.2","fields":[{"c":3}]}
+  
+echo '{"ip":"1.1.1.1","a":1}\n{"ip":"1.1.1.1","b":2}\n{"ip":"2.2.2.2","c":3}' | jq -s -c 'group_by(.ip)| map({ ip: (.[0].ip) } + ([.[]|del(.ip)] | reduce .[] as $item({}; .+$item)) ) | .[]'  
+{"ip":"1.1.1.1","a":1,"b":2}
+{"ip":"2.2.2.2","c":3}
+```
 
+## 如何删除/保留一个字段
+```
+# 保留一个字段 
+echo '{"ip":"1.1.1.1","a":1}' | jq -c '{ip}'
+{"ip":"1.1.1.1"}
+# 保留多个字段 
+echo '{"ip":"1.1.1.1","a":1}' | jq -c '{ip,a}'
+{"ip":"1.1.1.1","a":1}
+  
+# 删除一个字段  
+echo '{"ip":"1.1.1.1","a":1}' | jq -c 'del(.a)'
+{"ip":"1.1.1.1"}
+# 删除多个字段  
+echo '{"ip":"1.1.1.1","a":1}' | jq -c 'del(.a,.ip)'
+{}
+```  
+  
+## 如何打印key中带有dot点的值？
+用引号括起来：
+```
+echo '{"a.b":1}' | jq '."a.b"'
+1
+```  
+  
+## 如何转换为csv？
+```
+echo -n '{"a":"1","b":"2","c":"3"}\n{"a":"4","b":"5","c":"6"}' | jq --slurp --compact-output --raw-output '(map(keys) | add | unique) as $cols | map(. as $row | $cols | map($row[.])) as $rows | $cols, $rows[] | @csv'
+"a","b","c"
+"1","2","3"
+"4","5","6"
+```  
+  
+## 如何重命名key？
+用引号括起来：
+```
+echo '{"a":1}' | jq -c '{"b":."a"}'
+{"b":1}
+```  
+  
+## 替换某个数组类型的值？
+```
+echo '{"a":1,"b":[["ip","os","updated_at"],["1.1.1.1","","2021-03-24 18:55:22"],["2.2.2.2","","2021-03-24 18:55:22"]]}' | jq --compact-output '. | .+{b:(reduce .b[1:][] as $item([]; .+[$item[0]]) )}'
+{"a":1,"b":["1.1.1.1","2.2.2.2"]}
+```  
+  
+## 如何找出不同项
+```
+echo '{"a1":[1,2,3,4],"a2":[3,4,5]}' | jq -c '.a1more=.a1-.a2, .a2more=.a2-.a1, .a1a2eq=(.a1-(.a1-.a2))'
+{"a1":[1,2,3,4],"a2":[3,4,5],"a1more":[1,2]}
+{"a1":[1,2,3,4],"a2":[3,4,5],"a2more":[5]}
+{"a1":[1,2,3,4],"a2":[3,4,5],"a1a2eq":[3,4]}
+```  
+
+## 如何自定义多参数的函数？
+好像不能，不过可以变通的用一个数组或者object来实现效果：
+```
+echo '{"a1":[1,2,3,4],"a2":[3,4,5]}' | jq -c 'def fun(a):a[0],a[1]; fun([.a1,.a2])'
+[1,2,3,4]
+[3,4,5]
+```
+  
+## 如何根据key来修改value？甚至是直接修改key？
+```
+echo '{"a1":[1,2,3,4],"a2":[3,4,5]}' | jq -c 'with_entries(.value=1)'
+{"a1":1,"a2":1}
+  
+echo '{"a1":[1,2,3,4],"a2":[3,4,5]}' | jq -c 'with_entries(.key=(if .key=="a1" then "b" else .key end ))'
+{"b":[1,2,3,4],"a2":[3,4,5]}
+```
+ 
+## 如何根据条件来提取数据？
+```
+echo '{"a":[["1.1.1.1:80",80,"1.1.1.1"],["a.com:443",443,"2.2.2.2"]]}' | jq '.a | reduce .[] as $item ([]; if ($item[0] | contains($item[2]) | not) then .+=[$item[0]] else . end)'
+[
+  "a.com:443"
+]
+```
+ 
+## 如何提取一个url中的host？
+```
+echo '["1.1.1.1","1.1.1.1:81","http://1.1.1.1:82","https://1.1.1.1:83","[fe80::8407:ad05:f6be:90ad]", "https://[fe80::8407:ad05:f6be:90ad]:8443"]' | jq 'def extracthost(host): host|split("://")|last|(if (.|contains("]")) then .|split("]")[0:-1]|join("")+"]" else split(":")|first end); reduce .[] as $item ([]; .+=[extracthost($item)])'
+[
+  "1.1.1.1",
+  "1.1.1.1",
+  "1.1.1.1",
+  "1.1.1.1",
+  "[fe80::8407:ad05:f6be:90ad]",
+  "[fe80::8407:ad05:f6be:90ad]"
+]
+```
+
+## 如何实时输出到管道
+默认情况下jq是有buffer的，如果想要实时，可以用--unbuffered参数：
+```
+fofa random --fixUrl --size 100 --fields host --sleep 1 | jq -r .host --unbuffered | go run ./main.go
+```
+
+## 根据对象的数组中的某个字段进行排序
+```
+echo '{
+  "aggregations": {
+    "query_strings": {
+      "buckets": [
+        {
+          "key": "aaa",
+          "user_id_count": {
+            "value": 1
+          }
+        },
+        {
+          "key": "bbb",
+          "user_id_count": {
+            "value": 2
+          }
+        }
+      ]
+    }
+  }
+}' | jq '.aggregations.query_strings.buckets | sort_by(.user_id_count.value)'
+```
+  
   
 # 常见问题
+  
+## 如何方便的调试jq语法？
+- https://jqplay.org/ 支持多行
+- https://jqterm.com/

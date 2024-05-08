@@ -79,4 +79,22 @@ CREATE UNIQUE INDEX `idx_user_proxy` ON `user_proxies`(`user_id`,`proxy_id`)
 db.Clauses(clause.OnConflict{DoNothing: true}).Create(&user)
 ```
 
+## 取count操作
+```sql
+var cnt int64
+err = Get().Model(&Product{}).Count(&cnt).Error
+```
+
+## 定义model时增加注释说明
+```sql
+type User struct {
+  Memo   string `gorm:"comment:备注"`
+}
+```
+```shell
+sqlite> .tables
+useres
+.schema --indent useres
+```
+
 # 常见问题

@@ -233,6 +233,68 @@ echo '{"a.cvs":[["ip","domain"],["1.1.1.1","a.com"]]}\n{"b.cvs":[["ip","domain"]
 ❯ echo '{"name":"a","value":1}' | zq -j '{name:value}' -
 {"name":1}
 ```
+好像不行，要用jq
+
+## 如何合并多行的多个key
+```
+❯ echo '{"ip":"1.1.1.1","a":1}\n{"ip":"1.1.1.1","b":2}' | zq -j 'union(this) by ip | yield {...union[0], ...union[1]}' -
+{"ip":"1.1.1.1","a":1,"b":2}
+```
+
+## 如何转换为csv格式？
+```
+echo -n '{"a":"1","b":"2","c":"3"}\n{"a":"4","b":"5","c":"6"}' | zq -f csv -
+a,b,c
+1,2,3
+4,5,6
+```
+
+## 字段名称带有中文怎么办？
+暂时无解
+```
+echo '{"a":1,"b":1}' | zq -j 'cut a,b' -
+{"a":1,"b":1}
+
+echo '{"测试":1,"哈哈":1}' | zq -j 'cut 测试' -
+zq: error parsing Zed at column 5:
+cut 测试
+=== ^ ===
+
+echo '{"测试":1,"哈哈":1}' | zq -j 'cut "测试"' -
+illegal left-hand side of assignment'
+
+echo '{"测试":1,"哈哈":1}' | zq -j 'cut "测试","哈哈"' -
+illegal left-hand side of assignment'
+
+
+```
+
+## 时间戳timestamp和时间格式的相互转换
+```
+echo '{"ts":1671267600000000000}' | zq -j 'yield time(this.ts)' -
+"2022-12-17T09:00:00Z"
+
+echo '{"ts":"2022-12-17 09:00:00"}' | zq -j 'yield int64(time(this.ts))' -
+1671267600000000000
+
+# 取最大值
+echo -n '{"ts":"2022-12-17 09:00:00"}\n{"ts":"2022-12-18 09:00:00"}' | zq -j 'yield time(this.ts) | max(this)' -
+{"max":"2022-12-18T09:00:00Z"}
+# 取最小值
+echo -n '{"ts":"2022-12-17 09:00:00"}\n{"ts":"2022-12-18 09:00:00"}' | zq -j 'yield time(this.ts) | min(this)' -
+{"min":"2022-12-17T09:00:00Z"}
+
+# 日期的格式化输出在zq中暂时不支持，可以手动进行修改：
+echo -n '{"ts":"2022-12-17 09:00:00"}\n{"ts":"2022-12-18 09:00:00"}' | zq -j 'yield time(this.ts) | min(this) | yield string(this.min) | yield replace(this, "Z", "") | yield replace(this, "T", " ")' -
+"2022-12-17 09:00:00"
+```
+
+## 如何把一个数组展开
+```
+❯  echo '{"id":1,"a":[1,2]}' | zq -j 'over a with id=> (yield {id, a:this})' -
+{"id":1,"a":1}
+{"id":1,"a":2}
+```
 
 # 常见问题
   

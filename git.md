@@ -81,11 +81,42 @@ content='RpcContext.getContext'; \
 mkdir -p /project/path/
 git clone https://host_name/git/project.git /project/path/
 ```
+一个典型的场景比如go项目，我们希望从github下载到go/src对应的目录下面，咱们可以这样：
+```bash
+echo https://github.com/macronut/phantomsocks | awk -F'//' '{print $2}' | xargs -I{} git clone https://{} `go env GOPATH`/src/{}
+```
 
 * 删除本地和云端的tag？
 ```bash
 git tag -d v0.0.1
 git push --delete origin v0.0.1
+```
+
+* windows下msys2的git用LF而不是CR+LF
+```bash
+git config --global core.autocrlf false
+git config --global core.eol lf
+```
+对于已经git clone到本地的仓库，可以这么操作：
+```
+git ls-files -z | xargs -0 rm
+git checkout .
+```
+这种方式最常见的场景是：windows下clone的代码，在linux下执行./bootstrap会报错提示```-bash: ./bootstrap: /bin/sh^M: bad interpreter: No such file or directory```
+
+* `git clone --recurse-submodules`失败后如何把子模块重新下载？
+`fatal: clone of 'https://github.com/xxx/xxx' into submodule path 'xxx/xxx' failed`
+```shell
+git submodule update
+```
+
+* 合并分支到主分支
+```shell
+# 先切换到主分支
+git checkout main
+# 合并分子
+git merge branch1
+git push
 ```
 
 # 常见问题
